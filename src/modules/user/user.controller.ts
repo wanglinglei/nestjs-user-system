@@ -13,11 +13,15 @@ import {
   Res,
   Req,
   Session,
+  ParseIntPipe,
 } from '@nestjs/common';
+import * as svgCaptcha from 'svg-captcha';
+
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import * as svgCaptcha from 'svg-captcha';
+import { UserPipe } from './user.pipe';
+
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -33,7 +37,7 @@ export class UserController {
   }
 
   @Post()
-  create(@Body() body: CreateUserDto, @Session() session) {
+  create(@Body(UserPipe) body: CreateUserDto, @Session() session) {
     const { username, password, code } = body;
     if (code.toLowerCase() !== session.code.toLowerCase()) {
       return '验证码错误';
@@ -55,13 +59,16 @@ export class UserController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.userService.update(id, updateUserDto);
   }
 
   @Delete(':id')
