@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 // module
 import { UserModule } from './modules/user/user.module';
 import { GroupModule } from './modules/group/group.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { GroupModule } from './modules/group/group.module';
     }),
     UserModule,
     GroupModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
