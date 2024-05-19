@@ -9,6 +9,7 @@ export function GlobalMiddleware(
   next: NextFunction,
 ) {
   console.log('全局中间件', req.originalUrl);
+  console.log('全局中间件', res);
   if (whiteList.includes(req.originalUrl)) {
     next();
   } else {

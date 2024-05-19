@@ -33,8 +33,12 @@ export class UserController {
   }
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto, @Session() session) {
-    return this.userService.create(createUserDto);
+  create(@Body() body: CreateUserDto, @Session() session) {
+    const { username, password, code } = body;
+    if (code.toLowerCase() !== session.code.toLowerCase()) {
+      return '验证码错误';
+    }
+    return this.userService.create(body);
   }
 
   @Get()
