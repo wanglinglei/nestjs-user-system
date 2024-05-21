@@ -44,10 +44,24 @@ export class UserService {
       total,
     };
   }
-
+  /**
+   * @description: 根据用户id查询用户
+   * @param {number} id
+   * @return {*}
+   */
   findOne(id: number) {
     return this.userRepository.findOneBy({
       uid: Equal(id),
+    });
+  }
+  /**
+   * @description: 根据用户名查询用户
+   * @param {string} username
+   * @return {*}
+   */
+  findOneByUsername(username: string) {
+    return this.userRepository.findOneBy({
+      username: Equal(username),
     });
   }
 

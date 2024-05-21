@@ -3,6 +3,7 @@
 import { CallHandler, NestInterceptor, Injectable } from '@nestjs/common';
 import { map } from 'rxjs/operators';
 import { Observable } from 'rxjs';
+import { BUSINESS_HTTP_CODE } from '@/constants/httpCode';
 interface Data<T> {
   data: T;
 }
@@ -14,9 +15,9 @@ export class Response<T> implements NestInterceptor {
       map((data) => {
         return {
           code: 200,
+          rtnCode: BUSINESS_HTTP_CODE.SUCCESS,
           message: 'success',
           data,
-          success: true,
         };
       }),
     );

@@ -8,5 +8,5 @@ export class CreateUserDto {
   // 密码
   password: string;
   // 验证码
-  code: string;
+  code?: string;
 }

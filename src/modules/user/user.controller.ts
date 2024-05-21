@@ -14,13 +14,17 @@ import {
   Req,
   Session,
   ParseIntPipe,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import * as svgCaptcha from 'svg-captcha';
 
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserDto, UpdataUserPasswordDto } from './dto/update-user.dto';
 import { UserPipe } from './user.pipe';
+import { throwBusinessError } from '@/common/filter';
+import { BUSINESS_HTTP_CODE } from '@/constants/httpCode';
 
 @Controller('user')
 export class UserController {
@@ -36,13 +40,71 @@ export class UserController {
     return this.userService.addGroup(params);
   }
 
+  /**
+   * @description: create user
+   * @return {*}
+   */
   @Post()
-  create(@Body(UserPipe) body: CreateUserDto, @Session() session) {
-    const { username, password, code } = body;
-    if (code.toLowerCase() !== session.code.toLowerCase()) {
-      return '验证码错误';
+  async create(@Body(UserPipe) body: CreateUserDto, @Session() session) {
+    const { username = '', password = '', code = '' } = body;
+    console.log('session:', body);
+    if (!code) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        '验证码不能为空',
+      );
+    }
+    if (session.code && code.toLowerCase() !== session.code.toLowerCase()) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        '验证码错误',
+      );
+    }
+    const user = await this.userService.findOneByUsername(username);
+    if (!user) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        '用户不存在',
+      );
     }
     return this.userService.create(body);
+  }
+
+  /**
+   * @description: update user password
+   * @return {*}
+   */
+  @Post('/changePwd')
+  async changePassword(@Body(UserPipe) body: UpdataUserPasswordDto) {
+    const { username = '', oldPassword = '', newPassword = '' } = body;
+    console.log('session:', body);
+
+    if (!username) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        '用户名不能为空',
+      );
+    }
+    if (oldPassword === newPassword) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        '新密码不能与旧密码相同',
+      );
+    }
+    const user = await this.userService.findOneByUsername(username);
+    if (!user) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        '用户不存在',
+      );
+    }
+    if (user.password !== oldPassword) {
+      return throwBusinessError(BUSINESS_HTTP_CODE.BUSINESS_ERROR, '密码错误');
+    }
+    return this.userService.update(user.uid, {
+      ...user,
+      password: newPassword,
+    });
   }
 
   @Get()
