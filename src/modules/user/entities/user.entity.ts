@@ -21,6 +21,9 @@ export class User {
   @Column({ select: false, comment: '密码' })
   password: string;
 
+  @Column({ select: false, comment: '加码盐' })
+  salt: string;
+
   @Column({ comment: '昵称', nullable: true, default: '' })
   nickname: string;
 

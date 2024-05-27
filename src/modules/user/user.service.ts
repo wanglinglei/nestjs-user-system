@@ -12,12 +12,13 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
-  ) {}
+  ) { }
 
   create(createUserDto: CreateUserDto) {
     const data = new User();
     data.username = createUserDto.username;
     data.password = createUserDto.password;
+    data.salt = createUserDto.salt;
 
     return this.userRepository.save(data);
   }
@@ -63,6 +64,14 @@ export class UserService {
     return this.userRepository.findOneBy({
       username: Equal(username),
     });
+  }
+  async findOneAllInfoByUsername(username: string) {
+    return await this.userRepository
+      .createQueryBuilder('user')
+      .where(`user.username = :username`, { username })
+      .addSelect('user.password')
+      .addSelect('user.salt')
+      .getOne();
   }
 
   update(uid: number, updateUserDto: UpdateUserDto) {

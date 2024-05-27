@@ -16,27 +16,36 @@ import {
   ParseIntPipe,
   HttpException,
   HttpStatus,
+  forwardRef,
+  Inject,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import * as svgCaptcha from 'svg-captcha';
 
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { AuthService } from '@/modules/auth/auth.service';
+import { CreateUserDto, LoginUserDto } from './dto/create-user.dto';
 import { UpdateUserDto, UpdataUserPasswordDto } from './dto/update-user.dto';
 import { UserPipe } from './user.pipe';
 import { throwBusinessError } from '@/common/filter';
 import { BUSINESS_HTTP_CODE } from '@/constants/httpCode';
-
+import { encryptPassword, makeSalt } from '@/utils/cryptogram';
+import { AuthStatus, AuthStatusConfig } from '../auth/constants';
+import { JwtAuthGuard } from '../auth/auth.guard';
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
+  ) { }
 
   @Post('/addGroup')
   addGroup(
     @Body() params: { groups: string[]; uid: string },
     @Session() session,
   ) {
-    console.log('params:', params);
-
     return this.userService.addGroup(params);
   }
 
@@ -47,7 +56,6 @@ export class UserController {
   @Post()
   async create(@Body(UserPipe) body: CreateUserDto, @Session() session) {
     const { username = '', password = '', code = '' } = body;
-    console.log('session:', body);
     if (!code) {
       return throwBusinessError(
         BUSINESS_HTTP_CODE.BUSINESS_ERROR,
@@ -61,13 +69,36 @@ export class UserController {
       );
     }
     const user = await this.userService.findOneByUsername(username);
-    if (!user) {
+    if (user) {
       return throwBusinessError(
         BUSINESS_HTTP_CODE.BUSINESS_ERROR,
-        '用户不存在',
+        '用户名已被使用',
       );
     }
-    return this.userService.create(body);
+    // 制作盐
+    const salt = makeSalt();
+    // 加密
+    const hashPwd = encryptPassword(password, salt);
+    console.log('password', hashPwd);
+    return this.userService.create({
+      ...body,
+      password: hashPwd,
+      salt,
+    });
+  }
+
+  @Post('/login')
+  async userLogin(@Body(UserPipe) body: LoginUserDto) {
+    const { username, password } = body;
+    const authRes = await this.authService.validateUser(username, password);
+    const { status, user } = authRes;
+    if (status !== AuthStatus['SUCCESS']) {
+      return throwBusinessError(
+        BUSINESS_HTTP_CODE.BUSINESS_ERROR,
+        AuthStatusConfig[status],
+      );
+    }
+    return this.authService.certificate(user);
   }
 
   /**
@@ -77,7 +108,6 @@ export class UserController {
   @Post('/changePwd')
   async changePassword(@Body(UserPipe) body: UpdataUserPasswordDto) {
     const { username = '', oldPassword = '', newPassword = '' } = body;
-    console.log('session:', body);
 
     if (!username) {
       return throwBusinessError(
@@ -107,11 +137,19 @@ export class UserController {
     });
   }
 
+  /**
+   * @description: find all user
+   * @return {*}
+   */
+  @UseGuards(AuthGuard('jwt'))
   @Get()
   findAll(
     @Query() query: { keyword: string; page: number; size: number },
+    @Request() request,
     @Headers() headers,
   ) {
+    console.log('request.user', request.user);
+
     const { keyword = '', page = 1, size = 5 } = query;
     return this.userService.findAll({
       keyword,
@@ -147,7 +185,6 @@ export class UserController {
       height: 34, //高度
       background: '#cc9966', //背景颜色
     });
-    console.log(req, req.session);
 
     session.code = captcha.text; //存储验证码记录到session
     // req.session = { ...req.session, code: captcha.text };
